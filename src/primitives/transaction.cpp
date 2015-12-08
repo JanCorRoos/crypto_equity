@@ -28,6 +28,16 @@ CTxIn::CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nS
     nSequence = nSequenceIn;
 }
 
+CTxIn::CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn, CAssetIssuanceDate date, CAssetData assetDataIn)
+{
+    prevout = COutPoint(hashPrevTx, nOut);
+    scriptSig = scriptSigIn;
+    nSequence = nSequenceIn;
+    issuanceDate = date;
+    assetData = assetDataIn
+
+}
+
 std::string CTxIn::ToString() const
 {
     std::string str;
@@ -43,10 +53,12 @@ std::string CTxIn::ToString() const
     return str;
 }
 
-CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
+CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, CIssuerID issuerIDIn, CAssetType assetTypeIn)
 {
     nValue = nValueIn;
     scriptPubKey = scriptPubKeyIn;
+    issuerID = issuerIDIn;
+    assetType = assetTypeIn;
 }
 
 uint256 CTxOut::GetHash() const
@@ -72,9 +84,20 @@ void CTransaction::UpdateHash() const
     *const_cast<uint256*>(&hash) = SerializeHash(*this);
 }
 
-CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0) { }
+CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0), date("null") {
+    // std::printf("nLockTime: %d", 0); 
+
+    // std::time_t now = std::time(0);
+
+    // char* dt = ctime(&now);
+
+
+    // std::printf("%s\n", dt);
+
+}
 
 CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {
+    std::printf("nLockTime: %d", tx.nLockTime);
     UpdateHash();
 }
 

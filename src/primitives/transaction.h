@@ -10,6 +10,7 @@
 #include "script/script.h"
 #include "serialize.h"
 #include "uint256.h"
+#include "vector"
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -54,12 +55,19 @@ public:
  * transaction's output that it claims and a signature that matches the
  * output's public key.
  */
+
+typedef uint32_t CAssetIssuanceDate;
+typedef std::vector<unsigned char> CAssetData;
+
 class CTxIn
 {
 public:
     COutPoint prevout;
     CScript scriptSig;
     uint32_t nSequence;
+    CAssetIssuanceDate issuanceDate;
+    CAssetData assetData;
+
 
     CTxIn()
     {
@@ -68,6 +76,7 @@ public:
 
     explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<unsigned int>::max());
     CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+    CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max(), CAssetIssuanceDate date, CAssetData assetDataIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -76,6 +85,8 @@ public:
         READWRITE(prevout);
         READWRITE(scriptSig);
         READWRITE(nSequence);
+        READWRITE(issuanceDate);
+        READWRITE(assetData);
     }
 
     bool IsFinal() const
@@ -87,7 +98,8 @@ public:
     {
         return (a.prevout   == b.prevout &&
                 a.scriptSig == b.scriptSig &&
-                a.nSequence == b.nSequence);
+                a.nSequence == b.nSequence &&
+                a.issuanceDate == b.issuanceDate);
     }
 
     friend bool operator!=(const CTxIn& a, const CTxIn& b)
@@ -95,8 +107,22 @@ public:
         return !(a == b);
     }
 
+    bool 
+
     std::string ToString() const;
 };
+
+
+/*
+
+An issuer ID will likely be the public key of the company or party that created this asset.
+An asset type can have any value, with 0 reserved for BTC. For example, a 
+
+
+*/
+
+typedef uint256 CIssuerID;
+typedef uint256 CAssetType;
 
 /** An output of a transaction.  It contains the public key that the next input
  * must be able to sign with to claim it.
@@ -106,13 +132,15 @@ class CTxOut
 public:
     CAmount nValue;
     CScript scriptPubKey;
+    CIssuerID issuerID;
+    CAssetType assetType;
 
     CTxOut()
     {
         SetNull();
     }
 
-    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn);
+    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, CAssetType assetType=CAssetType(), CIssuerID issuerID=CIssuerID());
 
     ADD_SERIALIZE_METHODS;
 
@@ -120,7 +148,10 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(nValue);
         READWRITE(scriptPubKey);
+        READWRITE(issuerID);
+        READWRITE(assetType);
     }
+
 
     void SetNull()
     {
@@ -160,7 +191,9 @@ public:
     friend bool operator==(const CTxOut& a, const CTxOut& b)
     {
         return (a.nValue       == b.nValue &&
-                a.scriptPubKey == b.scriptPubKey);
+                a.scriptPubKey == b.scriptPubKey &&
+                a.assetType == b.assetType &&
+                a.issuerID == b.issuerID);
     }
 
     friend bool operator!=(const CTxOut& a, const CTxOut& b)
@@ -239,6 +272,11 @@ public:
     bool IsCoinBase() const
     {
         return (vin.size() == 1 && vin[0].prevout.IsNull());
+    }
+
+    bool IsAssetIssuance() const
+    {
+        return (vin.size() == 1 && !vin[0].assetData.IsNull() && vin[0].prevout.IsNull());
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)
